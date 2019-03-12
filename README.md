@@ -63,7 +63,7 @@ module Api::V1
 end
 ```
 
-### serialize
+#### serialize
 Response data is serialized via the `#serialize` method.  When using `FastJsonapi` we 
 automatically form the request `current_user` into the params.  
 
