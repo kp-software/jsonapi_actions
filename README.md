@@ -22,11 +22,15 @@ $ bundle install
 
 ### Basic Setup
 
-Include the `JsonapiActions::ErrorHandling` module in your base controller.
+Include the `JsonapiActions::ErrorHandling` and `JsonapiActions::ErrorHandling` modules in 
+your base controller.
 
 ```ruby
+# app/controllers/api/v1/base_controller.rb
+ 
 module Api::V1
   class BaseController < ApplicationController
+    include JsonApiActions::Controller
     include JsonapiActions::ErrorHandling
     
     respond_to :json
@@ -34,20 +38,57 @@ module Api::V1
 end
 ```
 
-Include then `JsonapiActions::Controller` module in each API controller and specify the model.
+Define the Model for each child Controller.
 
 ```ruby
+# app/controllers/api/v1/projects_controller.rb
+ 
 module Api::V1
   class ProjectsController < BaseController
-    include JsonApiActions::Controller
     self.model = Project
   end 
 end
 ```
 
+Define your routes.
+
+```ruby
+# config/routes.rb
+ 
+Rails.application.routes.draw do
+  namespace :api, defaults: { format: 'json' } do
+    namespace :v1 do
+      resources :projects
+    end
+  end
+end
+
+```
+
 NOTE: If you are not using Pundit, please see Usage without Pundit section below.
 
 ### Controller
+
+#### Custom Actions (Non-CRUD)
+You can easily utilize JsonapiActions in custom controller actions too.  Just use 
+
+```ruby
+# app/controllers/api/v1/projects_controller.rb
+ 
+module Api::V1
+  class ProjectsController < BaseController
+    self.model = Project
+    
+    def activate
+      set_record
+      @record.activate!
+      render serialize(@record)
+    rescue ActiveRecord::RecordInvalid
+      render unprocessable_entity(@record)
+    end
+  end 
+end
+```
 
 #### serializer
 Controller actions render JSON data via a Serializer.  We assume a `Model` has a `ModelSerializer`.  
@@ -55,7 +96,7 @@ To use a different serializer, define `self.serializer = OtherSerializer` on the
 
 ```ruby
 module Api::V1
-  class ProjectsController < BaseController
+  class BaseController
     include JsonApiActions::Controller
     self.model = Project
     self.serializer = SecretProjectSerializer
@@ -79,7 +120,7 @@ module Api::V1
     
     private
      
-       def serialize(data, options = {})
+       def serialize(data, options = { meta: metadata, include: include_param })
          { json: data }.merge(options)
        end
   end

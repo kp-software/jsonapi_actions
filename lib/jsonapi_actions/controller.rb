@@ -25,11 +25,11 @@ module JsonapiActions
         @records = sort(@records)
         @records = paginate(@records)
 
-        render serialize(eager_load(@records), meta: pagination_meta(@records).merge(metadata), include: include_param)
+        render serialize(eager_load(@records), meta: pagination_meta(@records).merge(metadata))
       end
 
       def show
-        render serialize(@record, meta: metadata, include: include_param)
+        render serialize(@record)
       end
 
       def create
@@ -40,7 +40,7 @@ module JsonapiActions
 
         if @record.save
           @record.reload # ensure we have after commit stuff from things like carrierwave
-          render serialize(@record, meta: metadata, include: include_param), status: :created
+          render serialize(@record), status: :created
         else
           render unprocessable_entity(@record)
         end
@@ -49,7 +49,7 @@ module JsonapiActions
       def update
         if @record.update(record_params)
           @record.reload # ensure we have after commit stuff from things like carrierwave
-          render serialize(@record, meta: metadata, include: include_param)
+          render serialize(@record)
         else
           render unprocessable_entity(@record)
         end
@@ -77,10 +77,10 @@ module JsonapiActions
 
           records = records.joins(parent[:association]) unless parent[:association].blank?
           records = if parent[:table]
-                       records.where(parent[:table] => { parent[:attribute] => params[parent[:param]] })
-                     else
-                       records.where(parent[:attribute] => params[parent[:param]])
-                     end
+                      records.where(parent[:table] => { parent[:attribute] => params[parent[:param]] })
+                    else
+                      records.where(parent[:attribute] => params[parent[:param]])
+                    end
         end
 
         records
@@ -164,7 +164,7 @@ module JsonapiActions
         self.class.model || self.class.model_name.constantize
       end
 
-      def serialize(data, options = {})
+      def serialize(data, options = { meta: metadata, include: include_param })
         if defined?(FastJsonapi)
           { json: serializer.new(data, options.deep_merge(params: { current_user: current_user })) }
         elsif defined?(ActiveModel::Serializer)
