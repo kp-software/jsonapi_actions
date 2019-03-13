@@ -1,8 +1,10 @@
 # JsonapiActions
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/jsonapi_actions`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Instantly create flexible API controllers that are compatible with [JSON:API](https://jsonapi.org/). 
+Utilize your existing [FastJsonapi](https://github.com/Netflix/fast_jsonapi) or 
+[ActiveModel::Serializer](https://github.com/rails-api/active_model_serializers) serialization library, or bring your 
+own. Scope and authenticate with optional [Pundit](https://github.com/varvet/pundit) policies and/or Controller specific 
+methods. 
 
 ## Installation
 
@@ -27,11 +29,9 @@ your base controller.
 
 ```ruby
 # app/controllers/api/v1/base_controller.rb
- 
 module Api::V1
   class BaseController < ApplicationController
-    include JsonApiActions::Controller
-    include JsonapiActions::ErrorHandling
+    include JsonApiActions
     
     respond_to :json
   end
@@ -42,7 +42,6 @@ Define the Model for each child Controller.
 
 ```ruby
 # app/controllers/api/v1/projects_controller.rb
- 
 module Api::V1
   class ProjectsController < BaseController
     self.model = Project
@@ -54,7 +53,6 @@ Define your routes.
 
 ```ruby
 # config/routes.rb
- 
 Rails.application.routes.draw do
   namespace :api, defaults: { format: 'json' } do
     namespace :v1 do
@@ -65,16 +63,53 @@ end
 
 ```
 
-NOTE: If you are not using Pundit, please see Usage without Pundit section below.
+### parent_scope
+Index actions can be scoped by parent associations.  i.e. nested routes.
 
-### Controller
+```ruby
+# app/models/project.rb
+class Project < ApplicationRecord
+  belongs_to :user 
+end
 
-#### Custom Actions (Non-CRUD)
-You can easily utilize JsonapiActions in custom controller actions too.  Just use 
+# config/routes.rb
+Rails.application.routes.draw do
+  namespace :api, defaults: { format: 'json' } do
+    namespace :v1 do
+      # /api/v1/projects
+      resources :projects
+      
+      resources :users do
+        # /api/v1/users/:user_id/projects
+        resources :projects
+      end
+    end
+  end
+end
+
+# app/controllers/api/v1/projects_controller.rb
+module Api::V1
+  class ProjectsController < BaseController
+    self.model = Project
+    self.parent_associations = [
+      # When Using using attribute on the model
+      #   Project.where(user_id: params[:user_id]) 
+      { param: :user_id, attribute: :user_id }, 
+      
+      # When using attribute on the associated model
+      #   Project.joins(:user).where(users: { id: params[:user_id] }) 
+      { param: :user_id, association: :user, table: :users, attribute: :id } 
+    ]
+  end 
+end
+```
+
+### Custom Actions (Non-CRUD)
+You can easily utilize JsonapiActions in custom controller actions too.  Just call `#set_record` to 
+initialize `@record` and when you're done `render response(@record)`
 
 ```ruby
 # app/controllers/api/v1/projects_controller.rb
- 
 module Api::V1
   class ProjectsController < BaseController
     self.model = Project
@@ -82,7 +117,7 @@ module Api::V1
     def activate
       set_record
       @record.activate!
-      render serialize(@record)
+      render response(@record)
     rescue ActiveRecord::RecordInvalid
       render unprocessable_entity(@record)
     end
@@ -90,44 +125,83 @@ module Api::V1
 end
 ```
 
-#### serializer
-Controller actions render JSON data via a Serializer.  We assume a `Model` has a `ModelSerializer`.  
-To use a different serializer, define `self.serializer = OtherSerializer` on the Controller. 
+### #serializer
+Controller actions render JSON data via a Serializer.  We assume a `Model` has a `ModelSerializer`. To use a 
+different serializer, define `self.serializer = OtherSerializer` on the Controller. 
 
 ```ruby
+# app/controllers/api/v1/base_controller.rb
 module Api::V1
-  class BaseController
-    include JsonApiActions::Controller
+  class ProjectsController < BaseController
     self.model = Project
     self.serializer = SecretProjectSerializer
   end 
 end
 ```
 
-#### serialize
-Response data is serialized via the `#serialize` method.  When using `FastJsonapi` we 
-automatically form the request `current_user` into the params.  
-
-If you are not using `FastJsonapi` or `ActiveModel::Serializer`, then you should override 
-this method.
+### #json_response
+Response data is formatted so that it can be rendered with `FastJsonapi` or `ActiveModel::Serializer`.
+If you are using a different serializer, or would like to further change the response.  Then you will need to override
+`#response`, which defines the arguments for `render`.
 
  ```ruby
+# app/controllers/api/v1/base_controller.rb
 module Api::V1
   class BaseController < ApplicationController
-    include JsonapiActions::ErrorHandling
+    include JsonapiActions
     
     respond_to :json
     
     private
      
-       def serialize(data, options = { meta: metadata, include: include_param })
+       def json_response(data, options = {})
          { json: data }.merge(options)
        end
   end
 end
  ```
 
-## Usage without Pundit
+## Pundit
+
+JsonapiActions are built to use Pundit for authorization.  We utilize action authorization, policy scope, 
+and permitted params.
+
+```ruby
+# app/policies/project_policy.rb
+class ProjectPolicy < ApplicationPolicy
+  def index?
+    true
+  end
+  
+  def show?
+    record.user == user
+  end
+   
+  def create?
+    record.user == user
+  end
+    
+  def update?
+    record.user == user  
+  end
+    
+  def destroy?
+    record.user == user  
+  end
+  
+  def permitted_params
+    %i[user_id name]
+  end
+  
+  class Scope < Scope
+    def resolve
+      scope.where(user_id: user.id)
+    end
+  end
+end
+```
+
+### Usage without Pundit
 
 If you are not using Pundit for authorization, then you will need to defined `#permitted_params`.  
 You can optionally override methods for `#policy_scope` and `#authorize` too.
@@ -142,7 +216,7 @@ module Api::V1
     private
     
       def permitted_params
-        %i[name]
+        %i[user_id name]
       end
       
       # This override is optional
