@@ -198,25 +198,6 @@ module JsonapiActions
     def eager_load(records)
       records
     end
-
-    # Pundit Usage
-    if !defined?(Pundit)
-      def policy_scope(scope)
-        scope
-      end
-
-      def policy(record)
-        OpenStruct.new(permitted_attributes: permitted_attributes)
-      end
-
-      def permitted_attributes
-        []
-      end
-
-      def authorize(record, query = nil)
-        # do nothing
-      end
-    end
   end
 
   module ClassMethods
