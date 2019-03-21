@@ -175,7 +175,7 @@ module JsonapiActions
     def json_response(data, options = {})
       if defined?(FastJsonapi)
         {
-          json: serializer.new(data, options.deep_merge(params: {
+          json: serializer(data).new(data, options.deep_merge(params: {
             meta: metadata, include: include_param, current_user: current_user
           }))
         }
@@ -188,8 +188,11 @@ module JsonapiActions
       end
     end
 
-    def serializer
-      self.class.serializer || "#{model.name}Serializer".constantize
+    def serializer(data = nil)
+      self.class.serializer ||
+        data.try(:serializer_class) ||
+        data.try(:first).try(:serializer_class) ||
+        "#{model.name}Serializer".constantize
     end
 
     def eager_load(records)
@@ -217,6 +220,6 @@ module JsonapiActions
   end
 
   module ClassMethods
-    attr_accessor :model, :parent_associations, :permitted_params, :model_name, :serializer
+    attr_accessor :model, :parent_associations, :model_name, :serializer
   end
 end
