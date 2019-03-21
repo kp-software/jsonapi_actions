@@ -2,7 +2,7 @@ module JsonapiActions
   module Authorization
     extend ActiveSupport::Concern
 
-    if !defined?(Pundit)
+    if !Gem::Specification.find_by_name('pundit')
       def policy_scope(scope)
         scope
       end
