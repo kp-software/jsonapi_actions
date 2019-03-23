@@ -1,6 +1,7 @@
 require 'active_support/concern'
 
 require 'jsonapi_actions/authorization'
+require 'jsonapi_actions/eager_loader'
 require 'jsonapi_actions/error_handling'
 require 'jsonapi_actions/inclusion_mapper'
 require 'jsonapi_actions/version'
@@ -148,7 +149,7 @@ module JsonapiActions
     end
 
     def inclusion_map
-      InclusionMapper.new(serializer, params[:include]).map
+      InclusionMapper.new(serializer, include: params[:include]).map
     end
 
     def unprocessable_entity(record)
@@ -200,7 +201,7 @@ module JsonapiActions
     end
 
     def eager_load(records)
-      records
+      EagerLoader.new(records, serializer, include_param).eager_load
     end
   end
 
