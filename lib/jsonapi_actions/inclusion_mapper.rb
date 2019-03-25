@@ -33,7 +33,7 @@ module JsonapiActions
           include << include_relationships(child_serializer, parent_key: child_key)
         end
 
-        include
+        include.flatten.compact
       end
 
       def included?(parent, child)

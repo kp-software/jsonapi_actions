@@ -18,12 +18,23 @@ module JsonapiActions
         @records = @records.eager_load(rel[0])
       end
 
-      includes.each do |rel|
+      includes.each do |include|
+        rel = path_to_relationship(include.to_s.split('.'))
         next if @records.eager_load_values.include?(rel)
-        @records = @records.eager_load(rel)
+        @records = records.eager_load(rel)
       end
 
       @records
     end
+
+    private
+
+      def path_to_relationship(parts)
+        if parts.length == 1
+          parts[0].to_sym
+        else parts.length == 2
+        { parts[0].to_sym => path_to_relationship(parts[1..-1]) }
+        end
+      end
   end
 end
