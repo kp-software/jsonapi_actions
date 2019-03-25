@@ -13,7 +13,7 @@ module JsonapiActions
 
     # @return [ActiveRecord::Relation]
     def eager_load
-      serializer.relationships_to_serialize.each do |rel|
+      serializer.relationships_to_serialize&.each do |rel|
         next if @records.eager_load_values.include?(rel[0])
         @records = @records.eager_load(rel[0])
       end
