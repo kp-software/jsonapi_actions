@@ -178,8 +178,8 @@ module JsonapiActions
         {
           json: serializer(data).new(data, options.deep_merge(
             include: include_param,
+            meta: metadata,
             params: {
-              meta: metadata,
               current_user: try(:current_user)
             })
           )
