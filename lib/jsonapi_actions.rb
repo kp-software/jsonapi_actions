@@ -201,7 +201,7 @@ module JsonapiActions
     end
 
     def eager_load(records)
-      EagerLoader.new(records, serializer, include_param).eager_load
+      records
     end
   end
 
