@@ -1,7 +1,7 @@
 # JsonapiActions
 
 Instantly create flexible API controllers that are compatible with [JSON:API](https://jsonapi.org/). 
-Utilize your existing [FastJsonapi](https://github.com/Netflix/fast_jsonapi) or 
+Utilize your existing [FastJsonapi](https://github.com/fast-jsonapi/fast_jsonapi) or 
 [ActiveModel::Serializer](https://github.com/rails-api/active_model_serializers) serialization library, or bring your 
 own. Scope and authenticate with optional [Pundit](https://github.com/varvet/pundit) policies and/or Controller specific 
 methods. 
@@ -24,8 +24,7 @@ $ bundle install
 
 ### Basic Setup
 
-Include the `JsonapiActions::ErrorHandling` and `JsonapiActions::ErrorHandling` modules in 
-your base controller.
+Include `JsonapiActions` in your base controller.
 
 ```ruby
 # app/controllers/api/v1/base_controller.rb
@@ -60,7 +59,6 @@ Rails.application.routes.draw do
     end
   end
 end
-
 ```
 
 ### parent_scope
@@ -163,7 +161,7 @@ end
 
 ## Pundit
 
-JsonapiActions are built to use Pundit for authorization.  We utilize action authorization, policy scope, 
+JsonapiActions is built to use Pundit for authorization.  We utilize action authorization, policy scope, 
 and permitted params.
 
 ```ruby
