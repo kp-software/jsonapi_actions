@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    jsonapi_actions (0.1.1)
+    jsonapi_actions (0.1.2)
       kaminari (>= 1.0, < 2.0)
       rails (>= 4.0, < 7.0)
 
