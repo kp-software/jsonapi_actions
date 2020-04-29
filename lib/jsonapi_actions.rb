@@ -194,27 +194,21 @@ module JsonapiActions
     end
 
     def serializer(data = nil)
-      if self.class.serializer
-        self.class.serializer
-      else
-        "#{model.name}Serializer".constantize
-      end
-
-    rescue NoMethodError, NameError
-      serializer_lookup(data)
-    end
-
-    def serializer_lookup(data)
       serializer_classes = [
+        self.class.serializer,
         data.try(:serializer_class),
-        "#{data.class.try(:name)}Serializer".try(:constantize),
+        "#{data.class.name}Serializer".safe_constantize,
         data.try(:first).try(:serializer_class),
-        "#{data.try(:first).class.try(:name)}Serializer".try(:constantize)
+        "#{data.try(:first).class.name}Serializer".safe_constantize
       ].compact
 
-      raise 'Unknown serializer' if serializer_classes.empty?
-
-      serializer_classes.first
+      if serializer_classes.any?
+        serializer_classes.first
+      else
+        "#{model.name}Serializer".safe_constantize
+      end
+    rescue NoMethodError, NameError
+      raise 'Unknown serializer'
     end
 
     def eager_load(records)
