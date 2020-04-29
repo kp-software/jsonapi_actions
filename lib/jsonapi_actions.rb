@@ -120,11 +120,11 @@ module JsonapiActions
 
     def page
       @page ||= begin
-        page = {}
-        page[:number] = (params.dig(:page, :number) || 1).to_i
-        page[:size] = [[(params.dig(:page, :size) || 20).to_i, 1000].min, 1].max
-        page
-      end
+                  page = {}
+                  page[:number] = (params.dig(:page, :number) || 1).to_i
+                  page[:size] = [[(params.dig(:page, :size) || 20).to_i, 1000].min, 1].max
+                  page
+                end
     end
 
     def set_record
@@ -194,10 +194,27 @@ module JsonapiActions
     end
 
     def serializer(data = nil)
-      self.class.serializer ||
-        data.try(:serializer_class) ||
-        data.try(:first).try(:serializer_class) ||
+      if self.class.serializer
+        self.class.serializer
+      else
         "#{model.name}Serializer".constantize
+      end
+
+    rescue NoMethodError, NameError
+      serializer_lookup(data)
+    end
+
+    def serializer_lookup(data)
+      serializer_classes = [
+        data.try(:serializer_class),
+        "#{data.class.try(:name)}Serializer".try(:constantize),
+        data.try(:first).try(:serializer_class),
+        "#{data.try(:first).class.try(:name)}Serializer".try(:constantize)
+      ].compact
+
+      raise 'Unknown serializer' if serializer_classes.empty?
+
+      serializer_classes.first
     end
 
     def eager_load(records)
