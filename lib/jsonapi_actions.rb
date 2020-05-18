@@ -174,7 +174,7 @@ module JsonapiActions
     end
 
     def json_response(data, options = {})
-      if Gem::Specification.find_by_name('fast_jsonapi')
+      if defined?(FastJsonapi)
         {
           json: serializer(data).new(data, options.deep_merge(
             include: include_param,
@@ -185,7 +185,7 @@ module JsonapiActions
           )
         }
 
-      elsif Gem::Specification.find_by_name('active_model_serializers')
+      elsif defined?(ActiveModel::Serializer)
         { json: data }.merge(meta: metadata, include: include_param).merge(options)
 
       else
