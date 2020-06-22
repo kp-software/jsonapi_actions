@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Kevin Pheasey"]
   spec.email         = ["kevin@kpsoftware.io"]
 
-  spec.summary       = "Rails JSONAPI Controller Actions"
-  spec.description   = "Implement Rails JSONAPI compliant controller actions."
+  spec.summary       = "Rails JSON:API Controller Actions"
+  spec.description   = "Implement Rails JSON:API compliant controller actions."
   spec.homepage      = "https://github.com/kp-software/jsonapi_actions"
   spec.license       = "MIT"
 

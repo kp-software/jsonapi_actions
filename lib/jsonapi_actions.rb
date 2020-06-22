@@ -174,7 +174,7 @@ module JsonapiActions
     end
 
     def json_response(data, options = {})
-      if defined?(FastJsonapi)
+      if defined?(JSONAPI::Serializer) || defined?(FastJsonapi)
         {
           json: serializer(data).new(data, options.deep_merge(
             include: include_param,

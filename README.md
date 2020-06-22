@@ -1,7 +1,8 @@
 # JsonapiActions
 
 Instantly create flexible API controllers that are compatible with [JSON:API](https://jsonapi.org/). 
-Utilize your existing [FastJsonapi](https://github.com/fast-jsonapi/fast_jsonapi) or 
+Utilize your existing [JSONAPI::Serializer](https://github.com/jsonapi-serializer/jsonapi-serializer), 
+[FastJsonapi](https://github.com/Netflix/fast_jsonapi), or 
 [ActiveModel::Serializer](https://github.com/rails-api/active_model_serializers) serialization library, or bring your 
 own. Scope and authenticate with optional [Pundit](https://github.com/varvet/pundit) policies and/or Controller specific 
 methods. 
@@ -138,7 +139,7 @@ end
 ```
 
 ### #json_response
-Response data is formatted so that it can be rendered with `FastJsonapi` or `ActiveModel::Serializer`.
+Response data is formatted so that it can be rendered with `JSONAPI::Serializer`, `FastJsonapi`, or `ActiveModel::Serializer`.
 If you are using a different serializer, or would like to further change the response.  Then you will need to override
 `#response`, which defines the arguments for `render`.
 
