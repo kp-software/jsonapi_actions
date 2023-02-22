@@ -74,146 +74,148 @@ module JsonapiActions
 
     private
 
-    def metadata
-      {}
-    end
+      def metadata
+        {}
+      end
 
-    def parent_scope(records)
-      return records if self.class.parent_associations.blank?
+      def parent_scope(records)
+        return records if self.class.parent_associations.blank?
 
-      self.class.parent_associations.each do |parent|
-        next if params[parent[:param]].blank?
+        self.class.parent_associations.each do |parent|
+          next if params[parent[:param]].blank?
 
-        records = records.joins(parent[:association]) unless parent[:association].blank?
-        records = if parent[:table]
-                    records.where(parent[:table] => { parent[:attribute] => params[parent[:param]] })
-                  else
-                    records.where(parent[:attribute] => params[parent[:param]])
+          records = records.joins(parent[:association]) unless parent[:association].blank?
+          records = if parent[:table]
+                      records.where(parent[:table] => { parent[:attribute] => params[parent[:param]] })
+                    else
+                      records.where(parent[:attribute] => params[parent[:param]])
+                    end
+        end
+
+        records
+      end
+
+      def filter(records)
+        records
+      end
+
+      def sort(records)
+        return records if params[:sort].blank?
+        order = {}
+
+        params[:sort].split(',').each do |sort|
+          if sort[0] == '-'
+            order[sort[1..-1]] = :desc
+          else
+            order[sort] = :asc
+          end
+        end
+
+        return records.order(order)
+      end
+
+      def paginate(records)
+        records.page(page[:number]).per(page[:size])
+      end
+
+      def page
+        @page ||= begin
+                    page = {}
+                    page[:number] = (params.dig(:page, :number) || 1).to_i
+                    page[:size] = [[(params.dig(:page, :size) || 20).to_i, 1000].min, 1].max
+                    page
                   end
       end
 
-      records
-    end
+      def set_record
+        @record = model.find(params[:id])
+        authorize(@record)
+      end
 
-    def filter(records)
-      records
-    end
+      def id_param
+        params.require(:data).permit(policy(@record).permitted_attributes)[:id]
+      end
 
-    def sort(records)
-      return records if params[:sort].blank?
-      order = {}
+      def record_params
+        params.require(:data).require(:attributes).permit(policy(@record).permitted_attributes)
+      end
 
-      params[:sort].split(',').each do |sort|
-        if sort[0] == '-'
-          order[sort[1..-1]] = :desc
+      def include_param
+        if %w[* **].include? params[:include]
+          inclusion_map
         else
-          order[sort] = :asc
+          params[:include].to_s.split(',').reject(&:blank?).map(&:to_sym)
         end
       end
 
-      return records.order(order)
-    end
-
-    def paginate(records)
-      records.page(page[:number]).per(page[:size])
-    end
-
-    def page
-      @page ||= begin
-                  page = {}
-                  page[:number] = (params.dig(:page, :number) || 1).to_i
-                  page[:size] = [[(params.dig(:page, :size) || 20).to_i, 1000].min, 1].max
-                  page
-                end
-    end
-
-    def set_record
-      @record = model.find(params[:id])
-      authorize(@record)
-    end
-
-    def id_param
-      params.require(:data).permit(policy(@record).permitted_attributes)[:id]
-    end
-
-    def record_params
-      params.require(:data).require(:attributes).permit(policy(@record).permitted_attributes)
-    end
-
-    def include_param
-      if %w[* **].include? params[:include]
-        inclusion_map
-      else
-        params[:include].to_s.split(',').reject(&:blank?).map(&:to_sym)
+      def inclusion_map
+        InclusionMapper.new(serializer, include: params[:include]).map
       end
-    end
 
-    def inclusion_map
-      InclusionMapper.new(serializer, include: params[:include]).map
-    end
+      def unprocessable_entity(record)
+        Rails.logger.debug(record.errors.messages)
+        { json: record.errors.messages, status: :unprocessable_entity }
+      end
 
-    def unprocessable_entity(record)
-      Rails.logger.debug(record.errors.messages)
-      { json: record.errors.messages, status: :unprocessable_entity }
-    end
+      def pagination_meta(collection)
+        return {} if collection.nil?
 
-    def pagination_meta(collection)
-      return {} if collection.nil?
-
-      {
-        current_page: collection.current_page,
-        next_page: collection.next_page,
-        prev_page: collection.prev_page,
-        total_pages: collection.total_pages,
-        total_count: collection.total_count
-      }
-    end
-
-    def model
-      self.class.model || self.class.model_name.constantize
-    end
-
-    def json_response(data, options = {})
-      if defined?(JSONAPI::Serializer) || defined?(FastJsonapi)
         {
-          json: serializer(data).new(data, options.deep_merge(
-            include: include_param,
-            meta: metadata,
-            params: {
-              current_user: try(:current_user)
-            })
-          )
+          current_page: collection.current_page,
+          next_page: collection.next_page,
+          prev_page: collection.prev_page,
+          total_pages: collection.total_pages,
+          total_count: collection.total_count
         }
-
-      elsif defined?(ActiveModel::Serializer)
-        { json: data }.merge(meta: metadata, include: include_param).merge(options)
-
-      else
-        { json: { data: data }.merge(options) }
       end
-    end
 
-    def serializer(data = nil)
-      serializer_classes = [
-        self.class.serializer,
-        data.try(:serializer_class),
-        "#{data.class.name}Serializer".safe_constantize,
-        data.try(:first).try(:serializer_class),
-        "#{data.try(:first).class.name}Serializer".safe_constantize
-      ].compact
-
-      if serializer_classes.any?
-        serializer_classes.first
-      else
-        "#{model.name}Serializer".safe_constantize
+      def model
+        self.class.model || self.class.model_name.constantize
       end
-    rescue NoMethodError, NameError
-      raise 'Unknown serializer'
-    end
 
-    def eager_load(records)
-      records
-    end
+      def json_response(data, options = {})
+        if defined?(JSONAPI::Serializer) || defined?(FastJsonapi)
+          {
+            json: serializer(data).new(data, options.deep_merge(
+              include: include_param,
+              meta: metadata,
+              params: serializer_params)
+            )
+          }
+
+        elsif defined?(ActiveModel::Serializer)
+          { json: data }.merge(meta: metadata, include: include_param).merge(options)
+
+        else
+          { json: { data: data }.merge(options) }
+        end
+      end
+
+      def serializer(data = nil)
+        serializer_classes = [
+          self.class.serializer,
+          data.try(:serializer_class),
+          "#{data.class.name}Serializer".safe_constantize,
+          data.try(:first).try(:serializer_class),
+          "#{data.try(:first).class.name}Serializer".safe_constantize
+        ].compact
+
+        if serializer_classes.any?
+          serializer_classes.first
+        else
+          "#{model.name}Serializer".safe_constantize
+        end
+      rescue NoMethodError, NameError
+        raise 'Unknown serializer'
+      end
+
+      def serializer_params
+        { current_user: try(:current_user) }
+      end
+
+      def eager_load(records)
+        records
+      end
   end
 
   module ClassMethods
